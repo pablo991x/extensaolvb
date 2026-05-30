@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "FreeLovable",
+  "name": "Scout Projects",
   "version": "3.1",
   "description": "Seu Lovable ilimitado, direto da sua conta, de qualquer dispositivo!",
   "permissions": ["storage", "activeTab", "scripting", "tabs", "sidePanel", "alarms"],

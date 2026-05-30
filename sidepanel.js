@@ -5,9 +5,9 @@
   const STORAGE_BUCKET_NAME = "anexos";
   const DEFAULT_REMOTE_CONFIG = {
     branding: {
-      app_name: "Painel",
-      panel_title: "Painel Lateral",
-      license_title: "Painel",
+      app_name: "Scout Projects",
+      panel_title: "Scout Projects",
+      license_title: "Scout Projects",
       license_subtitle: "Carregando configuração...",
       support_label: "Ajuda",
       support_url: "",
@@ -420,7 +420,7 @@
       '<div class="sp-header">' +
         '<div class="sp-brand">' +
           '<img src="icon.png" width="20" height="20" alt="Logo" style="flex-shrink:0;">' +
-          '<span class="sp-brand-text">Painel</span>' +
+          '<span class="sp-brand-text">Scout Projects</span>' +
         '</div>' +
         '<div class="sp-header-actions">' +
           '<button class="sp-icon-btn sp-expire-btn" id="sp-expire-btn" title="Vencimento da Licença">' +
@@ -471,10 +471,10 @@
   function spApplyShellConfig() {
     spRenderShell();
     const branding = spGetBranding();
-    document.title = branding.panel_title || DEFAULT_REMOTE_CONFIG.branding.panel_title;
+    document.title = "Scout Projects";
 
     const brandText = document.querySelector('.sp-brand-text');
-    if (brandText) brandText.textContent = branding.app_name || DEFAULT_REMOTE_CONFIG.branding.app_name;
+    if (brandText) brandText.textContent = "Scout Projects";
 
     const supportLink = document.querySelector('.sp-support-link');
     if (supportLink) {
@@ -1661,7 +1661,7 @@
     // Modo sem licença: ativa automaticamente sem validação
     const freeSession = {
       session_id: 'free-' + Date.now(),
-      user_name: 'Bem-vindo ao FreeLovable!',
+      user_name: 'Bem-vindo ao Scout Projects!',
       status: 'active',
       expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       user_id: 'free-user',
