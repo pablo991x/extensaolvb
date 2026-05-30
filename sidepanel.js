@@ -1448,10 +1448,13 @@
       const pid = (sd.lovable_projectId || '').trim(); 
       const licKey = (sd.fl_license_key || '').trim();
 
+      console.log('[v0] Storage recuperado - PID:', pid, 'Token existe:', !!token, 'Token length:', token.length);
+
       if(!pid || !token) { 
         log.className = 'sp-log sp-log-error'; 
-        log.textContent = '⚠ Projeto não sincronizado'; 
+        log.textContent = 'Projeto não sincronizado'; 
         btn.disabled = false; btn.textContent = 'Enviar'; 
+        console.error('[v0] Erro: PID vazio ou token vazio. PID:', pid, 'Token:', token);
         return; 
       }
 
@@ -1459,6 +1462,8 @@
       if(token.toLowerCase().startsWith('bearer ')) {
         token = token.substring(7).trim();
       }
+
+      console.log('[v0] Token após limpeza (primeiros 20 chars):', token.substring(0, 20));
 
       const doneFiles = filesToUpload.filter(f => f.file_id && !f.uploadFailed);
       const filesPayload = doneFiles.map(f => ({
@@ -1559,7 +1564,15 @@
         console.error('[v0] Erro retornado pelo servidor:', result);
         console.error('[v0] Status HTTP:', resultResp ? resultResp.status : 'sem resposta');
         let errMsg = "Erro ao conectar com Lovable";
-        if (result) {
+        if (resultResp && resultResp.status === 0) {
+          errMsg = "Erro de conexão: Verifique sua internet e se o Lovable está acessível";
+        } else if (resultResp && resultResp.status === 401) {
+          errMsg = "Token de autenticação inválido ou expirado";
+        } else if (resultResp && resultResp.status === 403) {
+          errMsg = "Acesso negado. Verifique permissões do projeto";
+        } else if (resultResp && resultResp.status === 404) {
+          errMsg = "Projeto não encontrado no Lovable";
+        } else if (result) {
           if (result.error) errMsg = result.error;
           else if (result.message) errMsg = result.message;
           else if (result.raw) errMsg = "Resposta inesperada: " + result.raw.substring(0, 100);

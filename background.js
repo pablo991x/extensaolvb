@@ -167,17 +167,33 @@ async function handleBypassSilent(msg) {
 
 async function handleProxyFetch(msg, sendResponse) {
   try {
+    console.log("[Background] proxyFetch chamado com URL:", msg.url);
+    console.log("[Background] Headers:", msg.headers);
+    
     const resp = await fetch(msg.url, {
       method: msg.method || "POST",
       headers: msg.headers || {},
-      body: msg.body
+      body: msg.body,
+      mode: 'cors'
     });
+    
+    console.log("[Background] Resposta HTTP Status:", resp.status);
+    
     const text = await resp.text();
+    console.log("[Background] Resposta body (primeiros 500 chars):", text.substring(0, 500));
+    
     let data;
-    try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
+    try { 
+      data = JSON.parse(text); 
+    } catch(e) { 
+      console.warn("[Background] Não conseguiu fazer parse JSON:", e.message);
+      data = { raw: text }; 
+    }
+    
     sendResponse({ ok: resp.ok, status: resp.status, data });
   } catch(err) {
-    sendResponse({ ok: false, data: { error: err.message } });
+    console.error("[Background] Erro em proxyFetch:", err.message, err.stack);
+    sendResponse({ ok: false, status: 0, data: { error: err.message } });
   }
 }
 
