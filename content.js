@@ -26,13 +26,19 @@ window.addEventListener("message", (event) => {
           lovable_token: token, 
           lovable_projectId: projectId,
           lovable_sourceHost: sourceHost || ""
-        }).catch(() => {
-          // Ignora silenciosamente erros de contexto
-        });
+        }).catch(() => {});
+      }
+    }
+    // Salva a URL real do endpoint de chat quando interceptada
+    if (event.data && event.data.type === "lovableApiUrlFound") {
+      const { url, projectId } = event.data;
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+        chrome.storage.local.set({ lovable_api_url: url }).catch(() => {});
+        console.log("[FreeLovable] URL real da API capturada:", url);
       }
     }
   } catch (e) {
-    // Falha silenciosa para evitar spam no console do usuário
+    // Falha silenciosa
   }
 });
 

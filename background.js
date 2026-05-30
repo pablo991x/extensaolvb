@@ -3,13 +3,12 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const API = {
   CONFIG: SUPABASE_URL + "/functions/v1/extension-config",
-  VALIDATE: SUPABASE_URL + "/functions/v1/validate-license",
   OPTIMIZE: SUPABASE_URL + "/functions/v1/optimize-prompt",
   TRANSFER_DEVICE: SUPABASE_URL + "/functions/v1/transfer-device",
   PROXY_CMD: SUPABASE_URL + "/functions/v1/proxy-command"
 };
 
-console.log("[Background] Motor FreeLovable Ativado");
+console.log("[Background] Scout Projects ativado");
 
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -24,9 +23,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepAlive') {
-    console.log("[Background] Pulso de vida...");
-  }
+  if (alarm.name === 'keepAlive') { /* mantém o service worker ativo */ }
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -36,9 +33,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.token) updates.lovable_token = msg.token;
     if (msg.projectId) updates.lovable_projectId = msg.projectId;
     if (Object.keys(updates).length) {
-      chrome.storage.local.set(updates, () => {
-        console.log("[Background] Projeto Sincronizado:", Object.keys(updates));
-      });
+      chrome.storage.local.set(updates);
     }
     return false;
   }
@@ -85,7 +80,6 @@ async function handleSupabaseAction(msg, sendResponse) {
 
     switch(subAction) {
       case "GET_CONFIG": url = API.CONFIG; break;
-      case "VALIDATE_LICENSE": url = API.VALIDATE; break;
       case "OPTIMIZE_PROMPT": url = API.OPTIMIZE; break;
       case "TRANSFER_DEVICE": url = API.TRANSFER_DEVICE; break;
       default: throw new Error("Ação Supabase desconhecida");
@@ -114,7 +108,7 @@ async function handleSupabaseAction(msg, sendResponse) {
 async function handleBypassSilent(msg) {
   try {
     const sd = await chrome.storage.local.get([
-      "lovable_projectId", "lovable_token", "fl_license_key", "fl_session_id", "fl_hw_fingerprint", "fl_plan_mode", "fl_chat_history"
+      "lovable_projectId", "lovable_token", "fl_chat_history"
     ]);
 
     if (!sd.lovable_projectId || !sd.lovable_token) {
@@ -125,37 +119,34 @@ async function handleBypassSilent(msg) {
     let token = sd.lovable_token.trim();
     if (token.toLowerCase().startsWith('bearer ')) token = token.substring(7).trim();
 
-    const payload = {
-      license_key: sd.fl_license_key || "",
-      session_id: sd.fl_session_id || ('bg-' + Date.now()),
-      device_id: sd.fl_hw_fingerprint || sd.fl_device_id || 'dv-unknown',
-      projeto_id: sd.lovable_projectId,
-      token_lovable: token,
-      mensagem: msg,
-      modo_pensar: !!sd.fl_plan_mode,
-      files: []
+    const lovablePayload = {
+      message: msg,
+      files: [],
+      chat_only: true,
+      optimisticImageUrls: [],
+      fast_mode: true,
+      thread_id: "main",
+      view: "preview",
+      view_description: "The user is currently viewing the preview.",
+      model: "opus-4.7-max"
     };
 
-    const resp = await fetch(API.PROXY_CMD, {
+    const lovableApiUrl = `https://api.lovable.dev/api/v1/projects/${sd.lovable_projectId}/chat/message`;
+
+    const resp = await fetch(lovableApiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
-      body: JSON.stringify(payload)
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify(lovablePayload)
     });
 
-    const respText = await resp.text();
-    let result = { success: false };
-    try {
-      if (respText) result = JSON.parse(respText);
-      else console.warn("[Background] Resposta do servidor vazia.");
-    } catch (e) {
-      console.error("[Background] Resposta não é um JSON válido:", respText);
-    }
-    
     const history = sd.fl_chat_history || [];
     history.unshift({ 
       text: msg, 
       timestamp: new Date().toISOString(), 
-      status: (resp.ok && result.success !== false) ? 'ok' : 'error' 
+      status: resp.ok ? 'ok' : 'error' 
     });
     if (history.length > 50) history.pop();
     
@@ -173,14 +164,16 @@ async function handleProxyFetch(msg, sendResponse) {
     const resp = await fetch(msg.url, {
       method: msg.method || "POST",
       headers: msg.headers || {},
-      body: msg.body
+      body: msg.body,
+      mode: 'cors',
+      credentials: 'include'
     });
     const text = await resp.text();
     let data;
     try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
     sendResponse({ ok: resp.ok, status: resp.status, data });
   } catch(err) {
-    sendResponse({ ok: false, data: { error: err.message } });
+    sendResponse({ ok: false, status: 0, data: { error: err.message } });
   }
 }
 

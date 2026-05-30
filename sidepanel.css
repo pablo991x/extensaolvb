@@ -52,10 +52,10 @@ body.sp-light {
   --fl-text-primary: #09090b;
   --fl-text-secondary: #3f3f46;
   --fl-text-muted: #71717a;
-  --fl-accent: #2563eb;
-  --fl-accent-hover: #1d4ed8;
-  --fl-accent-glow: rgba(37, 99, 235, 0.1);
-  --fl-accent-subtle: rgba(37, 99, 235, 0.05);
+  --fl-accent: #7c3aed;
+  --fl-accent-hover: #6d28d9;
+  --fl-accent-glow: rgba(124, 58, 237, 0.12);
+  --fl-accent-subtle: rgba(124, 58, 237, 0.06);
   --fl-success: #16a34a;
   --fl-success-bg: rgba(22, 163, 74, 0.08);
   --fl-warning: #ea580c;
@@ -64,7 +64,7 @@ body.sp-light {
   --fl-danger-bg: rgba(220, 38, 38, 0.08);
 }
 body.sp-light .sp-badge {
-  background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
 }
 body.sp-light .sp-header,
 body.sp-light .sp-footer {
@@ -87,9 +87,9 @@ body { animation: sp-fadeIn 0.4s ease-out; }
 .sp-brand { display: flex; align-items: center; gap: 6px; }
 .sp-brand-text { 
   font-size: 16px; 
-  font-weight: 600; 
+  font-weight: 700; 
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #f97316, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6, #6d28d9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

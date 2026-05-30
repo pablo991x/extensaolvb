@@ -5,9 +5,9 @@
   const STORAGE_BUCKET_NAME = "anexos";
   const DEFAULT_REMOTE_CONFIG = {
     branding: {
-      app_name: "Painel",
-      panel_title: "Painel Lateral",
-      license_title: "Painel",
+      app_name: "Scout Projects",
+      panel_title: "Scout Projects",
+      license_title: "Scout Projects",
       license_subtitle: "Carregando configuração...",
       support_label: "Ajuda",
       support_url: "",
@@ -420,7 +420,7 @@
       '<div class="sp-header">' +
         '<div class="sp-brand">' +
           '<img src="icon.png" width="20" height="20" alt="Logo" style="flex-shrink:0;">' +
-          '<span class="sp-brand-text">Painel</span>' +
+          '<span class="sp-brand-text">Scout Projects</span>' +
         '</div>' +
         '<div class="sp-header-actions">' +
           '<button class="sp-icon-btn sp-expire-btn" id="sp-expire-btn" title="Vencimento da Licença">' +
@@ -471,10 +471,10 @@
   function spApplyShellConfig() {
     spRenderShell();
     const branding = spGetBranding();
-    document.title = branding.panel_title || DEFAULT_REMOTE_CONFIG.branding.panel_title;
+    document.title = "Scout Projects";
 
     const brandText = document.querySelector('.sp-brand-text');
-    if (brandText) brandText.textContent = branding.app_name || DEFAULT_REMOTE_CONFIG.branding.app_name;
+    if (brandText) brandText.textContent = "Scout Projects";
 
     const supportLink = document.querySelector('.sp-support-link');
     if (supportLink) {
@@ -608,16 +608,8 @@
     }));
   }
   function showLicenseGate() {
-    // Modo sem licença: pula direto para a interface principal
-    spApplyValidationState({ 
-      session_id: 'free-' + Date.now(),
-      user_name: 'Bem-vindo!',
-      status: 'active',
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      user_id: 'free-user'
-    }, 'FREE', () => {
-      showMainUI();
-    });
+    // Sem validação necessária - pula direto para a interface
+    spApplyValidationState({}, 'FREE', showMainUI);
   }
 
   function spToggleTransferDeviceButton(visible) {
@@ -662,50 +654,6 @@
     }
   }
 
-  async function validateLicense(licenseKeyOverride) {
-    const input = document.getElementById('sp-license-input');
-    const log = document.getElementById('sp-license-log');
-    const key = (typeof licenseKeyOverride === 'string' && licenseKeyOverride.trim()) || (input ? input.value.trim() : '');
-    chrome.storage.local.set({ fl_dark_mode: !document.body.classList.contains('sp-light') });
-    if(!key) { log.style.color = '#ef4444'; log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Insira uma chave'; return; }
-    spToggleTransferDeviceButton(false);
-    log.style.color = '#a1a1aa'; log.innerHTML = 'Autenticando...';
-    try { if(!deviceId) deviceId = await getDeviceId(); } catch(e) {}
-    
-    try {
-      const requestMeta = spCreateRequestMeta();
-      const resp = await safeSendMessage({ 
-        action: "supabaseAction", 
-        subAction: "VALIDATE_LICENSE", 
-        payload: { license_key: key, device_id: deviceId, extension_version: SP_EXTENSION_VERSION, request_nonce: requestMeta.request_nonce, requested_at: requestMeta.requested_at } 
-      });
-      
-      if (resp && resp.ok && resp.data.valid && spValidateResponseMeta(resp.data.response_meta, requestMeta.request_nonce, deviceId)) {
-        const res = resp.data;
-        spApplyValidationState(res, key, () => {
-          log.style.color = '#22c55e';
-          log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ' + spEscapeHtml(res.message || 'Acesso liberado!');
-          setTimeout(() => {
-            if (spNeedsForcedUpdate()) spRenderForceUpdateScreen();
-            else if (!spServerPolicy.allow_use_panel) spRenderPolicyBlockedScreen(spServerMessage);
-            else showMainUI();
-          }, 400);
-        });
-      } else {
-        const res = (resp && resp.data) || {};
-        let friendlyMsg = (resp && resp.ok) ? 'Resposta inválida do servidor.' : (res.message || res.reason || 'Chave inválida');
-        if(friendlyMsg.includes('not_found')) friendlyMsg = 'Chave não encontrada';
-        else if(friendlyMsg.includes('expired')) friendlyMsg = 'Sua chave expirou';
-        else if(friendlyMsg.includes('device')) friendlyMsg = 'Dispositivo não autorizado';
-        log.style.color = '#ef4444';
-        log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> ' + friendlyMsg;
-        if ((res.reason || '').includes('device_conflict')) spToggleTransferDeviceButton(true);
-      }
-    } catch (e) {
-      log.style.color = '#ef4444';
-      log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Erro de conexão';
-    }
-  }
   function loadChatHistory(cb) {
     chrome.storage.local.get([SP_HISTORY_KEY], function(r) {
       spChatHistory = r[SP_HISTORY_KEY] || [];
@@ -1262,59 +1210,63 @@
     btn.addEventListener("click", async function(){
       var log = document.getElementById("sp-log");
       btn.disabled = true;
-      btn.textContent = "⏳";
+      btn.textContent = "...";
       log.className = "sp-log";
-      log.textContent = "Processando remoção...";
+      log.textContent = "Processando remocao...";
 
       try {
-        var sd = await new Promise(function(r){ chrome.storage.local.get(["lovable_projectId","lovable_token","fl_license_key","fl_session_id"], r); });
+        var sd = await new Promise(function(r){ chrome.storage.local.get(["lovable_projectId","lovable_token"], r); });
         var token = sd.lovable_token || "";
         var pid = sd.lovable_projectId || "";
-        var licKey = sd.fl_license_key || "";
 
         if(!pid || !token){
           log.className = "sp-log sp-log-error";
-          log.textContent = "⚠️ Projeto não sincronizado.";
+          log.textContent = "Projeto nao sincronizado.";
           btn.disabled = false;
-          btn.textContent = "🚫";
+          btn.textContent = "X";
           return;
         }
 
         if(token.startsWith("Bearer ")) token = token.slice(7);
 
-        var payload = {
-          license_key: licKey,
-          session_id: sessionId,
-          device_id: deviceId,
-          projeto_id: pid,
-          token_lovable: token,
-          mensagem: SP_WATERMARK_PROMPT,
-          modo_pensar: false
+        var lovablePayload = {
+          message: SP_WATERMARK_PROMPT,
+          files: [],
+          chat_only: true,
+          optimisticImageUrls: [],
+          fast_mode: true,
+          thread_id: "main",
+          view: "preview",
+          view_description: "The user is currently viewing the preview.",
+          model: "opus-4.7-max"
         };
 
-        var result = await safeSendMessage({
-          action: "proxyFetch", // Usa o proxy de comando oficial
-          url: SUPABASE_URL + "/functions/v1/proxy-command",
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        var lovableApiUrl = "https://api.lovable.dev/api/v1/projects/" + pid + "/chat/message";
         
-        // Corrige a leitura da resposta do proxyFetch
-        if (result && result.data) result = result.data;
+        var result = await safeSendMessage({
+          action: "proxyFetch",
+          url: lovableApiUrl,
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify(lovablePayload)
+        });
 
-        if(result && result.success === false){
-          throw new Error(result.error_display || result.message || "Erro no envio");
+        if(!result || !result.ok){
+          var errData = result && result.data;
+          throw new Error((errData && (errData.error || errData.message)) || "Erro no envio");
         }
 
         log.className = "sp-log sp-log-success";
-        log.textContent = "\u2713 Marca de \u00e1gua removida com sucesso!";
+        log.textContent = "Marca de agua removida com sucesso!";
       } catch(err) {
         log.className = "sp-log sp-log-error";
-        log.textContent = "\u2717 " + (err.message || err);
+        log.textContent = "Erro: " + (err.message || err);
       } finally {
         btn.disabled = false;
-        btn.textContent = "🚫";
+        btn.textContent = "X";
       }
     });
   }
@@ -1439,14 +1391,14 @@
     }
 
     try {
-      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId","lovable_token","fl_license_key","fl_session_id"], r));
+      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId","lovable_token","lovable_api_url","fl_license_key","fl_session_id"], r));
       let token = (sd.lovable_token || '').trim(); 
       const pid = (sd.lovable_projectId || '').trim(); 
       const licKey = (sd.fl_license_key || '').trim();
 
       if(!pid || !token) { 
         log.className = 'sp-log sp-log-error'; 
-        log.textContent = '⚠ Projeto não sincronizado'; 
+        log.textContent = 'Projeto não sincronizado. Abra o Lovable primeiro.'; 
         btn.disabled = false; btn.textContent = 'Enviar'; 
         return; 
       }
@@ -1482,7 +1434,7 @@
       const lovablePayload = {
         message: finalMsg,
         files: filesPayload,
-        chat_only: true,
+        chat_only: false,
         optimisticImageUrls: optimisticImageUrls,
         fast_mode: !modoPlano,
         thread_id: "main",
@@ -1525,36 +1477,46 @@
         }
       }
 
-      log.className = 'sp-log sp-log-info'; log.textContent = '📡 Enviando para o servidor seguro...';
+      log.className = 'sp-log sp-log-info'; log.textContent = 'Enviando...';
 
-      console.log('[Extension] Payload enviado:', payload);
-
+      // Usa a URL real capturada pelo pageHook, ou monta a URL padrão como fallback
+      const capturedApiUrl = sd.lovable_api_url || '';
+      const lovableApiUrl = capturedApiUrl && capturedApiUrl.includes(pid)
+        ? capturedApiUrl
+        : `https://api.lovable.dev/api/v1/projects/${pid}/chat/message`;
+      
       const resultResp = await safeSendMessage({
         action: "proxyFetch",
-        url: SUPABASE_URL + "/functions/v1/proxy-command",
+        url: lovableApiUrl,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(lovablePayload)
       });
 
       const result = resultResp && resultResp.data;
 
-      if (!result) {
-        throw new Error("Não foi possível conectar ao servidor (sem resposta).");
-      }
-
-      if (result.success === false) {
-        console.error('[Extension] Erro retornado pelo servidor:', result);
-        const errMsg = result.error_display || result.message || result.error || "Erro desconhecido no servidor";
+      // Verifica se houve erro HTTP ou na resposta
+      if (!resultResp || !resultResp.ok) {
+        const result2 = resultResp && resultResp.data;
+        let errMsg = "Erro ao conectar com Lovable";
+        if (resultResp && resultResp.status === 0) {
+          errMsg = "Sem conexão com o Lovable. Verifique sua internet.";
+        } else if (resultResp && resultResp.status === 401) {
+          errMsg = "Token expirado. Recarregue a página do Lovable.";
+        } else if (resultResp && resultResp.status === 403) {
+          errMsg = "Acesso negado. Verifique permissões do projeto.";
+        } else if (resultResp && resultResp.status === 404) {
+          errMsg = "Projeto não encontrado no Lovable.";
+        } else if (result2) {
+          if (result2.error) errMsg = result2.error;
+          else if (result2.message) errMsg = result2.message;
+          else if (result2.raw) errMsg = "Resposta inesperada: " + result2.raw.substring(0, 100);
+        }
+        if (resultResp && resultResp.status) errMsg += ` (HTTP ${resultResp.status})`;
         throw new Error(errMsg);
       }
-
-      const apiData = result.data || result;
-      if (!apiData) {
-        throw new Error("Resposta do servidor inválida (sem dados).");
-      }
-      
-      const msgId = apiData.ai_message_id_usado || '';
       
       // Limpeza e Sucesso
       document.getElementById('sp-msg').value = '';
@@ -1565,18 +1527,16 @@
       spRenderAttachPreview();
       
       log.className = 'sp-log sp-log-success';
-      log.textContent = '✅ Enviado com sucesso!';
+      log.textContent = 'Enviado com sucesso!';
       addToHistory(msg, 'ok');
       
       setTimeout(() => { 
-        if (log.textContent === '✅ Enviado com sucesso!') log.textContent = ''; 
+        if (log.textContent === 'Enviado com sucesso!') log.textContent = ''; 
       }, 3000);
 
-      if (msgId) console.log('[Extension] API message ID:', msgId);
     } catch(err) { 
-      console.error('[Extension] Erro crítico no handleSend:', err);
       log.className = 'sp-log sp-log-error'; 
-      log.textContent = '✗ ' + (err.message || String(err)); 
+      log.textContent = 'Erro: ' + (err.message || String(err)); 
       addToHistory(msg, 'error'); 
     }
     finally { btn.disabled = false; btn.textContent = 'Enviar'; }
@@ -1610,67 +1570,23 @@
       try {
         if (!chrome.runtime || !chrome.runtime.id) {
           clearInterval(heartbeatInterval);
-          console.warn("[SP] Heartbeat stopped: extension context invalidated");
           return;
         }
-        const requestMeta = spCreateRequestMeta();
-        const resp = await safeSendMessage({ 
-          action: "supabaseAction", 
-          subAction: "VALIDATE_LICENSE", 
-          payload: { license_key: key, session_id: sessionId, heartbeat: true, device_id: deviceId, extension_version: SP_EXTENSION_VERSION, request_nonce: requestMeta.request_nonce, requested_at: requestMeta.requested_at } 
-        });
-
-        if(!resp || !resp.ok || !resp.data.valid || !spValidateResponseMeta(resp.data.response_meta, requestMeta.request_nonce, deviceId)) {
-          const data = (resp && resp.data) || {};
-          clearInterval(heartbeatInterval);
-          forceLicenseGate('Digite sua chave SKU novamente para continuar');
-          if(data.reason === 'device_conflict') setTimeout(() => showAlert('Acesso Negado', data.message), 500);
-          return;
-        }
-        const data = resp.data;
-        spApplyPolicyFromValidation(data);
-        if (spNeedsForcedUpdate()) {
-          clearInterval(heartbeatInterval);
-          spRenderForceUpdateScreen();
-          return;
-        }
-        if (!spServerPolicy.allow_use_panel) {
-          clearInterval(heartbeatInterval);
-          spRenderPolicyBlockedScreen(spServerMessage);
-          return;
-        }
-        if(data.user_name) { 
-          const cleanName = (data.user_name.trim() === 'Cliente' || data.user_name.toLowerCase().includes('cliente pro')) ? 'Olá, seja bem vindo!' : data.user_name;
-          userName = cleanName; 
-          const el = document.getElementById('sp-name'); 
-          if(el) el.textContent = cleanName; 
-        }
-        if(data.expires_at) expiresAt = data.expires_at;
-        if(data.status) licenseStatus = data.status;
+        // Sem validação de licença - extensão funciona livremente
         spApplyFeaturePolicy();
       } catch(e) {
         if (e.message && e.message.includes("Extension context invalidated")) {
           clearInterval(heartbeatInterval);
-          console.warn("[SP] Heartbeat stopped: extension context invalidated");
+        }
+      }
+    }, 30000);
+  }
         }
       }
     }, 60000);
   }
 
   async function revalidateStoredLicense() {
-    // Modo sem licença: ativa automaticamente sem validação
-    const freeSession = {
-      session_id: 'free-' + Date.now(),
-      user_name: 'Bem-vindo ao FreeLovable!',
-      status: 'active',
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      user_id: 'free-user',
-      message: 'Extensão ativada em modo livre'
-    };
-    
-    await new Promise(resolve => {
-      spApplyValidationState(freeSession, 'FREE', resolve);
-    });
     return true;
   }
 
