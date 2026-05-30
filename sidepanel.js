@@ -1531,10 +1531,13 @@
 
       log.className = 'sp-log sp-log-info'; log.textContent = 'Enviando diretamente para Lovable...';
 
-      console.log('[Extension] Payload enviado:', lovablePayload);
+      console.log('[v0] Payload enviado:', JSON.stringify(lovablePayload, null, 2));
+      console.log('[v0] Token (primeiros 20 chars):', token.substring(0, 20) + '...');
+      console.log('[v0] Project ID:', pid);
 
       // Enviar diretamente para a API do Lovable (bypass do proxy de licenca)
       const lovableApiUrl = `https://api.lovable.dev/api/v1/projects/${pid}/chat/message`;
+      console.log('[v0] URL da API:', lovableApiUrl);
       
       const resultResp = await safeSendMessage({
         action: "proxyFetch",
@@ -1547,12 +1550,23 @@
         body: JSON.stringify(lovablePayload)
       });
 
+      console.log('[v0] Resposta completa:', JSON.stringify(resultResp, null, 2));
+
       const result = resultResp && resultResp.data;
 
       // Verifica se houve erro HTTP ou na resposta
       if (!resultResp || !resultResp.ok) {
-        console.error('[Extension] Erro retornado pelo servidor:', result);
-        const errMsg = (result && (result.error || result.message)) || "Erro ao conectar com Lovable";
+        console.error('[v0] Erro retornado pelo servidor:', result);
+        console.error('[v0] Status HTTP:', resultResp ? resultResp.status : 'sem resposta');
+        let errMsg = "Erro ao conectar com Lovable";
+        if (result) {
+          if (result.error) errMsg = result.error;
+          else if (result.message) errMsg = result.message;
+          else if (result.raw) errMsg = "Resposta inesperada: " + result.raw.substring(0, 100);
+        }
+        if (resultResp && resultResp.status) {
+          errMsg += ` (HTTP ${resultResp.status})`;
+        }
         throw new Error(errMsg);
       }
 
@@ -1575,9 +1589,9 @@
       }, 3000);
 
     } catch(err) { 
-      console.error('[Extension] Erro critico no handleSend:', err);
+      console.error('[v0] Erro critico no handleSend:', err);
       log.className = 'sp-log sp-log-error'; 
-      log.textContent = '✗ ' + (err.message || String(err)); 
+      log.textContent = 'Erro: ' + (err.message || String(err)); 
       addToHistory(msg, 'error'); 
     }
     finally { btn.disabled = false; btn.textContent = 'Enviar'; }
