@@ -1443,18 +1443,15 @@
     }
 
     try {
-      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId","lovable_token","fl_license_key","fl_session_id"], r));
+      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId","lovable_token","lovable_api_url","fl_license_key","fl_session_id"], r));
       let token = (sd.lovable_token || '').trim(); 
       const pid = (sd.lovable_projectId || '').trim(); 
       const licKey = (sd.fl_license_key || '').trim();
 
-      console.log('[v0] Storage recuperado - PID:', pid, 'Token existe:', !!token, 'Token length:', token.length);
-
       if(!pid || !token) { 
         log.className = 'sp-log sp-log-error'; 
-        log.textContent = 'Projeto não sincronizado'; 
+        log.textContent = 'Projeto não sincronizado. Abra o Lovable primeiro.'; 
         btn.disabled = false; btn.textContent = 'Enviar'; 
-        console.error('[v0] Erro: PID vazio ou token vazio. PID:', pid, 'Token:', token);
         return; 
       }
 
@@ -1462,8 +1459,6 @@
       if(token.toLowerCase().startsWith('bearer ')) {
         token = token.substring(7).trim();
       }
-
-      console.log('[v0] Token após limpeza (primeiros 20 chars):', token.substring(0, 20));
 
       const doneFiles = filesToUpload.filter(f => f.file_id && !f.uploadFailed);
       const filesPayload = doneFiles.map(f => ({
@@ -1491,7 +1486,7 @@
       const lovablePayload = {
         message: finalMsg,
         files: filesPayload,
-        chat_only: true,
+        chat_only: false,
         optimisticImageUrls: optimisticImageUrls,
         fast_mode: !modoPlano,
         thread_id: "main",
@@ -1534,15 +1529,13 @@
         }
       }
 
-      log.className = 'sp-log sp-log-info'; log.textContent = 'Enviando diretamente para Lovable...';
+      log.className = 'sp-log sp-log-info'; log.textContent = 'Enviando...';
 
-      console.log('[v0] Payload enviado:', JSON.stringify(lovablePayload, null, 2));
-      console.log('[v0] Token (primeiros 20 chars):', token.substring(0, 20) + '...');
-      console.log('[v0] Project ID:', pid);
-
-      // Enviar diretamente para a API do Lovable (bypass do proxy de licenca)
-      const lovableApiUrl = `https://api.lovable.dev/api/v1/projects/${pid}/chat/message`;
-      console.log('[v0] URL da API:', lovableApiUrl);
+      // Usa a URL real capturada pelo pageHook, ou monta a URL padrão como fallback
+      const capturedApiUrl = sd.lovable_api_url || '';
+      const lovableApiUrl = capturedApiUrl && capturedApiUrl.includes(pid)
+        ? capturedApiUrl
+        : `https://api.lovable.dev/api/v1/projects/${pid}/chat/message`;
       
       const resultResp = await safeSendMessage({
         action: "proxyFetch",
@@ -1555,31 +1548,26 @@
         body: JSON.stringify(lovablePayload)
       });
 
-      console.log('[v0] Resposta completa:', JSON.stringify(resultResp, null, 2));
-
       const result = resultResp && resultResp.data;
 
       // Verifica se houve erro HTTP ou na resposta
       if (!resultResp || !resultResp.ok) {
-        console.error('[v0] Erro retornado pelo servidor:', result);
-        console.error('[v0] Status HTTP:', resultResp ? resultResp.status : 'sem resposta');
+        const result2 = resultResp && resultResp.data;
         let errMsg = "Erro ao conectar com Lovable";
         if (resultResp && resultResp.status === 0) {
-          errMsg = "Erro de conexão: Verifique sua internet e se o Lovable está acessível";
+          errMsg = "Sem conexão com o Lovable. Verifique sua internet.";
         } else if (resultResp && resultResp.status === 401) {
-          errMsg = "Token de autenticação inválido ou expirado";
+          errMsg = "Token expirado. Recarregue a página do Lovable.";
         } else if (resultResp && resultResp.status === 403) {
-          errMsg = "Acesso negado. Verifique permissões do projeto";
+          errMsg = "Acesso negado. Verifique permissões do projeto.";
         } else if (resultResp && resultResp.status === 404) {
-          errMsg = "Projeto não encontrado no Lovable";
-        } else if (result) {
-          if (result.error) errMsg = result.error;
-          else if (result.message) errMsg = result.message;
-          else if (result.raw) errMsg = "Resposta inesperada: " + result.raw.substring(0, 100);
+          errMsg = "Projeto não encontrado no Lovable.";
+        } else if (result2) {
+          if (result2.error) errMsg = result2.error;
+          else if (result2.message) errMsg = result2.message;
+          else if (result2.raw) errMsg = "Resposta inesperada: " + result2.raw.substring(0, 100);
         }
-        if (resultResp && resultResp.status) {
-          errMsg += ` (HTTP ${resultResp.status})`;
-        }
+        if (resultResp && resultResp.status) errMsg += ` (HTTP ${resultResp.status})`;
         throw new Error(errMsg);
       }
 
@@ -1602,7 +1590,6 @@
       }, 3000);
 
     } catch(err) { 
-      console.error('[v0] Erro critico no handleSend:', err);
       log.className = 'sp-log sp-log-error'; 
       log.textContent = 'Erro: ' + (err.message || String(err)); 
       addToHistory(msg, 'error'); 

@@ -9,7 +9,7 @@ const API = {
   PROXY_CMD: SUPABASE_URL + "/functions/v1/proxy-command"
 };
 
-console.log("[Background] Motor FreeLovable Ativado");
+console.log("[Background] Scout Projects ativado");
 
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -24,9 +24,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepAlive') {
-    console.log("[Background] Pulso de vida...");
-  }
+  if (alarm.name === 'keepAlive') { /* mantém o service worker ativo */ }
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -36,9 +34,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.token) updates.lovable_token = msg.token;
     if (msg.projectId) updates.lovable_projectId = msg.projectId;
     if (Object.keys(updates).length) {
-      chrome.storage.local.set(updates, () => {
-        console.log("[Background] Projeto Sincronizado:", Object.keys(updates));
-      });
+      chrome.storage.local.set(updates);
     }
     return false;
   }
@@ -167,32 +163,17 @@ async function handleBypassSilent(msg) {
 
 async function handleProxyFetch(msg, sendResponse) {
   try {
-    console.log("[Background] proxyFetch chamado com URL:", msg.url);
-    console.log("[Background] Headers:", msg.headers);
-    
     const resp = await fetch(msg.url, {
       method: msg.method || "POST",
       headers: msg.headers || {},
       body: msg.body,
       mode: 'cors'
     });
-    
-    console.log("[Background] Resposta HTTP Status:", resp.status);
-    
     const text = await resp.text();
-    console.log("[Background] Resposta body (primeiros 500 chars):", text.substring(0, 500));
-    
     let data;
-    try { 
-      data = JSON.parse(text); 
-    } catch(e) { 
-      console.warn("[Background] Não conseguiu fazer parse JSON:", e.message);
-      data = { raw: text }; 
-    }
-    
+    try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
     sendResponse({ ok: resp.ok, status: resp.status, data });
   } catch(err) {
-    console.error("[Background] Erro em proxyFetch:", err.message, err.stack);
     sendResponse({ ok: false, status: 0, data: { error: err.message } });
   }
 }

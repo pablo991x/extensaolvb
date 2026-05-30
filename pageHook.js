@@ -43,7 +43,7 @@ function notifyFound(token, projectId, force = false){
   if(normalizedToken && normalizedToken !== capturedToken){ capturedToken = normalizedToken; changed = true; }
   if(newProject && newProject !== capturedProjectId){ capturedProjectId = newProject; changed = true; }
   if(!changed && !force) return;
-  console.log("[FreeLovable] ✅ Token capturado!", capturedToken || "null");
+  console.log("[FreeLovable] Token capturado!", capturedToken ? capturedToken.substring(0, 20) + "..." : "null");
   console.log("[FreeLovable] ProjectId:", capturedProjectId);
   window.postMessage({ type:"lovableTokenFound", token:capturedToken, projectId:capturedProjectId, sourceHost: window.location.hostname },"*");
 }
@@ -74,6 +74,10 @@ window.addEventListener("message", (event)=>{
         if(auth && auth.startsWith("Bearer ")){
           const rawToken = auth.slice(7);
           notifyFound(rawToken, pid);
+          // Captura a URL real do endpoint de chat
+          if(reqUrl && reqUrl.includes('/chat') && pid){
+            window.postMessage({ type: "lovableApiUrlFound", url: reqUrl, projectId: pid }, "*");
+          }
         }
       }catch(e){}
       return originalFetch.apply(this,args);
