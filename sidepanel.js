@@ -608,16 +608,8 @@
     }));
   }
   function showLicenseGate() {
-    // Modo sem licença: pula direto para a interface principal
-    spApplyValidationState({ 
-      session_id: 'free-' + Date.now(),
-      user_name: 'Bem-vindo!',
-      status: 'active',
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      user_id: 'free-user'
-    }, 'FREE', () => {
-      showMainUI();
-    });
+    // Sem validação necessária - pula direto para a interface
+    spApplyValidationState({}, 'FREE', showMainUI);
   }
 
   function spToggleTransferDeviceButton(visible) {
@@ -1498,8 +1490,7 @@
         url: lovableApiUrl,
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(lovablePayload)
       });
@@ -1526,8 +1517,6 @@
         if (resultResp && resultResp.status) errMsg += ` (HTTP ${resultResp.status})`;
         throw new Error(errMsg);
       }
-
-      console.log('[Extension] Resposta da API Lovable:', result);
       
       // Limpeza e Sucesso
       document.getElementById('sp-msg').value = '';
@@ -1598,19 +1587,6 @@
   }
 
   async function revalidateStoredLicense() {
-    // Modo sem licença: ativa automaticamente sem validação
-    const freeSession = {
-      session_id: 'free-' + Date.now(),
-      user_name: 'Bem-vindo ao Scout Projects!',
-      status: 'active',
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      user_id: 'free-user',
-      message: 'Extensão ativada em modo livre'
-    };
-    
-    await new Promise(resolve => {
-      spApplyValidationState(freeSession, 'FREE', resolve);
-    });
     return true;
   }
 

@@ -165,7 +165,8 @@ async function handleProxyFetch(msg, sendResponse) {
       method: msg.method || "POST",
       headers: msg.headers || {},
       body: msg.body,
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     const text = await resp.text();
     let data;
