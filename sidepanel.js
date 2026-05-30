@@ -50,7 +50,7 @@
     { icon: SP_SVG.zap, label: "⚡ Performance", prompt: "Otimize a performance do carregamento, aplique lazy loading em imagens e reduza o tempo de execução do JS para atingir nota máxima no PageSpeed." },
     { icon: SP_SVG.palette, label: "🎨 UI Premium", prompt: "Melhore a estética da interface usando princípios modernos de design (espaçamento, cores harmônicas e tipografia) para um visual de software premium." },
     { icon: SP_SVG.smartphone, label: "📱 Mobile First", prompt: "Ajuste todo o CSS para ser 100% responsivo, focando em uma experiência perfeita em dispositivos móveis e tablets." },
-    { icon: SP_SVG.moon, label: "🌙 Dark Mode", prompt: "Implemente um sistema de tema escuro (Dark Mode) completo e elegante, com uma alternância suave e cores que reduzam o cansaço visual." },
+    { icon: SP_SVG.moon, label: "🌙 Dark Mode", prompt: "Implemente um sistema de tema escuro (Dark Mode) completo e elegante, com uma altern��ncia suave e cores que reduzam o cansaço visual." },
     { icon: SP_SVG.edit, label: "✍️ Copywriting", prompt: "Reescreva os textos e a estrutura desta página usando técnicas de Copywriting e Neuromarketing para aumentar drasticamente a conversão e vendas." },
     { icon: SP_SVG.trendUp, label: "📈 SEO Pro", prompt: "Monte um plano de SEO técnico completo, otimizando meta tags, estrutura de headers e sitemap para indexação máxima no Google." },
     { icon: SP_SVG.box, label: "🏗️ Arquitetura", prompt: "Refatore e reorganize o código em uma arquitetura limpa e modular, separando a lógica em componentes reutilizáveis e fáceis de manter." }
@@ -608,97 +608,16 @@
     }));
   }
   function showLicenseGate() {
-    if (spNeedsForcedUpdate()) {
-      spRenderForceUpdateScreen();
-      return;
-    }
-    try { if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; } } catch(e) {}
-    spSetShellVisible(false);
-    const body = document.getElementById('sp-body');
-    if (!body) return;
-    
-    // Default to light theme if no preference is saved
-    chrome.storage.local.get(["fl_dark_mode"], (r) => {
-      if (r.fl_dark_mode === undefined) {
-        document.body.classList.add('sp-light');
-        chrome.storage.local.set({ fl_dark_mode: false });
-      } else if (r.fl_dark_mode === false) {
-        document.body.classList.add('sp-light');
-      } else {
-        document.body.classList.remove('sp-light');
-      }
-      renderGate();
+    // Modo sem licença: pula direto para a interface principal
+    spApplyValidationState({ 
+      session_id: 'free-' + Date.now(),
+      user_name: 'Bem-vindo!',
+      status: 'active',
+      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: 'free-user'
+    }, 'FREE', () => {
+      showMainUI();
     });
-
-    function renderGate() {
-      body.innerHTML = `
-        <div class="fl-auth-screen">
-          <div class="fl-theme-toggle">
-            <button id="sp-theme-light-choice" class="fl-theme-btn" title="Modo Claro">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            </button>
-            <button id="sp-theme-dark-choice" class="fl-theme-btn" title="Modo Escuro">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            </button>
-          </div>
-
-          <div class="fl-auth-card">
-            <div class="fl-auth-icon-wrap" style="background:none; border:none; box-shadow:none; margin-bottom: 16px;">
-              <img src="icon.png" width="80" height="80" alt="Logo">
-            </div>
-            <div class="fl-auth-title">${spEscapeHtml(spGetBranding().license_title || DEFAULT_REMOTE_CONFIG.branding.license_title)}</div>
-            <div class="fl-auth-subtitle">${spEscapeHtml(spGetBranding().license_subtitle || DEFAULT_REMOTE_CONFIG.branding.license_subtitle)}</div>
-            
-            <div class="fl-input-group">
-              <div class="fl-input-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-              </div>
-              <input id="sp-license-input" class="fl-auth-input" type="password" placeholder="Chave de licença" autocomplete="off">
-            </div>
-
-            <button id="sp-license-btn" class="sp-btn-primary">Ativar licença</button>
-            <button id="sp-transfer-device-btn" class="sp-btn-primary" style="display:none; margin-top:10px; background:#27272a; border:1px solid rgba(255,255,255,0.08);">Usar neste dispositivo</button>
-            ${(spRemoteConfig.ui && spRemoteConfig.ui.show_support_link === false) ? '' : '<a href="' + spEscapeHtml(spGetBranding().support_url || DEFAULT_REMOTE_CONFIG.branding.support_url) + '" target="_blank" style="display:block; text-align:center; padding:10px; margin-top:12px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--fl-border); color:var(--fl-text-muted); text-decoration:none; font-size:11px; font-weight:700; transition:all 0.2s; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 8px rgba(0,0,0,0.2);">' + spEscapeHtml(spGetBranding().support_label || DEFAULT_REMOTE_CONFIG.branding.support_label) + '</a>'}
-            <div id="sp-license-log" class="sp-log"></div>
-          </div>
-        </div>
-      `;
-
-      const btn = document.getElementById('sp-license-btn');
-      const transferBtn = document.getElementById('sp-transfer-device-btn');
-      const input = document.getElementById('sp-license-input');
-      const darkBtn = document.getElementById('sp-theme-dark-choice');
-      const lightBtn = document.getElementById('sp-theme-light-choice');
-
-      const updateThemeButtons = () => {
-        const isLight = document.body.classList.contains('sp-light');
-        if (darkBtn) darkBtn.classList.toggle('active', !isLight);
-        if (lightBtn) lightBtn.classList.toggle('active', isLight);
-      };
-
-      if (darkBtn) darkBtn.addEventListener('click', () => {
-        document.body.classList.remove('sp-light');
-        chrome.storage.local.set({ fl_dark_mode: true });
-        updateThemeButtons();
-      });
-      if (lightBtn) lightBtn.addEventListener('click', () => {
-        document.body.classList.add('sp-light');
-        chrome.storage.local.set({ fl_dark_mode: false });
-        updateThemeButtons();
-      });
-
-      updateThemeButtons();
-      if (btn) btn.addEventListener('click', validateLicense);
-      if (transferBtn) transferBtn.addEventListener('click', transferDeviceForCurrentLicense);
-      if (input) {
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') validateLicense(); });
-        setTimeout(() => { try { input.focus(); } catch(e) {} }, 100);
-      }
-      spApplyFeaturePolicy();
-    }
   }
 
   function spToggleTransferDeviceButton(visible) {
@@ -1739,31 +1658,18 @@
   }
 
   async function revalidateStoredLicense() {
-    const cached = await new Promise(resolve => chrome.storage.local.get(["fl_license_key", "fl_session_id"], resolve));
-    const licenseKey = cached.fl_license_key || '';
-    if (!licenseKey) return false;
-    const requestMeta = spCreateRequestMeta();
-
-    const resp = await safeSendMessage({
-      action: "supabaseAction",
-      subAction: "VALIDATE_LICENSE",
-      payload: {
-        license_key: licenseKey,
-        session_id: cached.fl_session_id || '',
-        heartbeat: true,
-        device_id: deviceId,
-        extension_version: SP_EXTENSION_VERSION,
-        request_nonce: requestMeta.request_nonce,
-        requested_at: requestMeta.requested_at
-      }
-    });
-
-    if (!resp || !resp.ok || !resp.data || !resp.data.valid || !spValidateResponseMeta(resp.data.response_meta, requestMeta.request_nonce, deviceId)) {
-      return false;
-    }
-
+    // Modo sem licença: ativa automaticamente sem validação
+    const freeSession = {
+      session_id: 'free-' + Date.now(),
+      user_name: 'Bem-vindo ao FreeLovable!',
+      status: 'active',
+      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: 'free-user',
+      message: 'Extensão ativada em modo livre'
+    };
+    
     await new Promise(resolve => {
-      spApplyValidationState(resp.data, licenseKey, resolve);
+      spApplyValidationState(freeSession, 'FREE', resolve);
     });
     return true;
   }
