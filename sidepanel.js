@@ -1262,59 +1262,63 @@
     btn.addEventListener("click", async function(){
       var log = document.getElementById("sp-log");
       btn.disabled = true;
-      btn.textContent = "⏳";
+      btn.textContent = "...";
       log.className = "sp-log";
-      log.textContent = "Processando remoção...";
+      log.textContent = "Processando remocao...";
 
       try {
-        var sd = await new Promise(function(r){ chrome.storage.local.get(["lovable_projectId","lovable_token","fl_license_key","fl_session_id"], r); });
+        var sd = await new Promise(function(r){ chrome.storage.local.get(["lovable_projectId","lovable_token"], r); });
         var token = sd.lovable_token || "";
         var pid = sd.lovable_projectId || "";
-        var licKey = sd.fl_license_key || "";
 
         if(!pid || !token){
           log.className = "sp-log sp-log-error";
-          log.textContent = "⚠️ Projeto não sincronizado.";
+          log.textContent = "Projeto nao sincronizado.";
           btn.disabled = false;
-          btn.textContent = "🚫";
+          btn.textContent = "X";
           return;
         }
 
         if(token.startsWith("Bearer ")) token = token.slice(7);
 
-        var payload = {
-          license_key: licKey,
-          session_id: sessionId,
-          device_id: deviceId,
-          projeto_id: pid,
-          token_lovable: token,
-          mensagem: SP_WATERMARK_PROMPT,
-          modo_pensar: false
+        var lovablePayload = {
+          message: SP_WATERMARK_PROMPT,
+          files: [],
+          chat_only: true,
+          optimisticImageUrls: [],
+          fast_mode: true,
+          thread_id: "main",
+          view: "preview",
+          view_description: "The user is currently viewing the preview.",
+          model: "opus-4.7-max"
         };
 
-        var result = await safeSendMessage({
-          action: "proxyFetch", // Usa o proxy de comando oficial
-          url: SUPABASE_URL + "/functions/v1/proxy-command",
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        var lovableApiUrl = "https://api.lovable.dev/api/v1/projects/" + pid + "/chat/message";
         
-        // Corrige a leitura da resposta do proxyFetch
-        if (result && result.data) result = result.data;
+        var result = await safeSendMessage({
+          action: "proxyFetch",
+          url: lovableApiUrl,
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify(lovablePayload)
+        });
 
-        if(result && result.success === false){
-          throw new Error(result.error_display || result.message || "Erro no envio");
+        if(!result || !result.ok){
+          var errData = result && result.data;
+          throw new Error((errData && (errData.error || errData.message)) || "Erro no envio");
         }
 
         log.className = "sp-log sp-log-success";
-        log.textContent = "\u2713 Marca de \u00e1gua removida com sucesso!";
+        log.textContent = "Marca de agua removida com sucesso!";
       } catch(err) {
         log.className = "sp-log sp-log-error";
-        log.textContent = "\u2717 " + (err.message || err);
+        log.textContent = "Erro: " + (err.message || err);
       } finally {
         btn.disabled = false;
-        btn.textContent = "🚫";
+        btn.textContent = "X";
       }
     });
   }
@@ -1525,36 +1529,34 @@
         }
       }
 
-      log.className = 'sp-log sp-log-info'; log.textContent = '📡 Enviando para o servidor seguro...';
+      log.className = 'sp-log sp-log-info'; log.textContent = 'Enviando diretamente para Lovable...';
 
-      console.log('[Extension] Payload enviado:', payload);
+      console.log('[Extension] Payload enviado:', lovablePayload);
 
+      // Enviar diretamente para a API do Lovable (bypass do proxy de licenca)
+      const lovableApiUrl = `https://api.lovable.dev/api/v1/projects/${pid}/chat/message`;
+      
       const resultResp = await safeSendMessage({
         action: "proxyFetch",
-        url: SUPABASE_URL + "/functions/v1/proxy-command",
+        url: lovableApiUrl,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify(lovablePayload)
       });
 
       const result = resultResp && resultResp.data;
 
-      if (!result) {
-        throw new Error("Não foi possível conectar ao servidor (sem resposta).");
-      }
-
-      if (result.success === false) {
+      // Verifica se houve erro HTTP ou na resposta
+      if (!resultResp || !resultResp.ok) {
         console.error('[Extension] Erro retornado pelo servidor:', result);
-        const errMsg = result.error_display || result.message || result.error || "Erro desconhecido no servidor";
+        const errMsg = (result && (result.error || result.message)) || "Erro ao conectar com Lovable";
         throw new Error(errMsg);
       }
 
-      const apiData = result.data || result;
-      if (!apiData) {
-        throw new Error("Resposta do servidor inválida (sem dados).");
-      }
-      
-      const msgId = apiData.ai_message_id_usado || '';
+      console.log('[Extension] Resposta da API Lovable:', result);
       
       // Limpeza e Sucesso
       document.getElementById('sp-msg').value = '';
@@ -1565,16 +1567,15 @@
       spRenderAttachPreview();
       
       log.className = 'sp-log sp-log-success';
-      log.textContent = '✅ Enviado com sucesso!';
+      log.textContent = 'Enviado com sucesso!';
       addToHistory(msg, 'ok');
       
       setTimeout(() => { 
-        if (log.textContent === '✅ Enviado com sucesso!') log.textContent = ''; 
+        if (log.textContent === 'Enviado com sucesso!') log.textContent = ''; 
       }, 3000);
 
-      if (msgId) console.log('[Extension] API message ID:', msgId);
     } catch(err) { 
-      console.error('[Extension] Erro crítico no handleSend:', err);
+      console.error('[Extension] Erro critico no handleSend:', err);
       log.className = 'sp-log sp-log-error'; 
       log.textContent = '✗ ' + (err.message || String(err)); 
       addToHistory(msg, 'error'); 
