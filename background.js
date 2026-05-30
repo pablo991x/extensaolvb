@@ -3,7 +3,6 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const API = {
   CONFIG: SUPABASE_URL + "/functions/v1/extension-config",
-  VALIDATE: SUPABASE_URL + "/functions/v1/validate-license",
   OPTIMIZE: SUPABASE_URL + "/functions/v1/optimize-prompt",
   TRANSFER_DEVICE: SUPABASE_URL + "/functions/v1/transfer-device",
   PROXY_CMD: SUPABASE_URL + "/functions/v1/proxy-command"
@@ -81,7 +80,6 @@ async function handleSupabaseAction(msg, sendResponse) {
 
     switch(subAction) {
       case "GET_CONFIG": url = API.CONFIG; break;
-      case "VALIDATE_LICENSE": url = API.VALIDATE; break;
       case "OPTIMIZE_PROMPT": url = API.OPTIMIZE; break;
       case "TRANSFER_DEVICE": url = API.TRANSFER_DEVICE; break;
       default: throw new Error("Ação Supabase desconhecida");

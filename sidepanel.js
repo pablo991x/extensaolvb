@@ -662,50 +662,6 @@
     }
   }
 
-  async function validateLicense(licenseKeyOverride) {
-    const input = document.getElementById('sp-license-input');
-    const log = document.getElementById('sp-license-log');
-    const key = (typeof licenseKeyOverride === 'string' && licenseKeyOverride.trim()) || (input ? input.value.trim() : '');
-    chrome.storage.local.set({ fl_dark_mode: !document.body.classList.contains('sp-light') });
-    if(!key) { log.style.color = '#ef4444'; log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Insira uma chave'; return; }
-    spToggleTransferDeviceButton(false);
-    log.style.color = '#a1a1aa'; log.innerHTML = 'Autenticando...';
-    try { if(!deviceId) deviceId = await getDeviceId(); } catch(e) {}
-    
-    try {
-      const requestMeta = spCreateRequestMeta();
-      const resp = await safeSendMessage({ 
-        action: "supabaseAction", 
-        subAction: "VALIDATE_LICENSE", 
-        payload: { license_key: key, device_id: deviceId, extension_version: SP_EXTENSION_VERSION, request_nonce: requestMeta.request_nonce, requested_at: requestMeta.requested_at } 
-      });
-      
-      if (resp && resp.ok && resp.data.valid && spValidateResponseMeta(resp.data.response_meta, requestMeta.request_nonce, deviceId)) {
-        const res = resp.data;
-        spApplyValidationState(res, key, () => {
-          log.style.color = '#22c55e';
-          log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ' + spEscapeHtml(res.message || 'Acesso liberado!');
-          setTimeout(() => {
-            if (spNeedsForcedUpdate()) spRenderForceUpdateScreen();
-            else if (!spServerPolicy.allow_use_panel) spRenderPolicyBlockedScreen(spServerMessage);
-            else showMainUI();
-          }, 400);
-        });
-      } else {
-        const res = (resp && resp.data) || {};
-        let friendlyMsg = (resp && resp.ok) ? 'Resposta inválida do servidor.' : (res.message || res.reason || 'Chave inválida');
-        if(friendlyMsg.includes('not_found')) friendlyMsg = 'Chave não encontrada';
-        else if(friendlyMsg.includes('expired')) friendlyMsg = 'Sua chave expirou';
-        else if(friendlyMsg.includes('device')) friendlyMsg = 'Dispositivo não autorizado';
-        log.style.color = '#ef4444';
-        log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> ' + friendlyMsg;
-        if ((res.reason || '').includes('device_conflict')) spToggleTransferDeviceButton(true);
-      }
-    } catch (e) {
-      log.style.color = '#ef4444';
-      log.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Erro de conexão';
-    }
-  }
   function loadChatHistory(cb) {
     chrome.storage.local.get([SP_HISTORY_KEY], function(r) {
       spChatHistory = r[SP_HISTORY_KEY] || [];
@@ -1625,48 +1581,17 @@
       try {
         if (!chrome.runtime || !chrome.runtime.id) {
           clearInterval(heartbeatInterval);
-          console.warn("[SP] Heartbeat stopped: extension context invalidated");
           return;
         }
-        const requestMeta = spCreateRequestMeta();
-        const resp = await safeSendMessage({ 
-          action: "supabaseAction", 
-          subAction: "VALIDATE_LICENSE", 
-          payload: { license_key: key, session_id: sessionId, heartbeat: true, device_id: deviceId, extension_version: SP_EXTENSION_VERSION, request_nonce: requestMeta.request_nonce, requested_at: requestMeta.requested_at } 
-        });
-
-        if(!resp || !resp.ok || !resp.data.valid || !spValidateResponseMeta(resp.data.response_meta, requestMeta.request_nonce, deviceId)) {
-          const data = (resp && resp.data) || {};
-          clearInterval(heartbeatInterval);
-          forceLicenseGate('Digite sua chave SKU novamente para continuar');
-          if(data.reason === 'device_conflict') setTimeout(() => showAlert('Acesso Negado', data.message), 500);
-          return;
-        }
-        const data = resp.data;
-        spApplyPolicyFromValidation(data);
-        if (spNeedsForcedUpdate()) {
-          clearInterval(heartbeatInterval);
-          spRenderForceUpdateScreen();
-          return;
-        }
-        if (!spServerPolicy.allow_use_panel) {
-          clearInterval(heartbeatInterval);
-          spRenderPolicyBlockedScreen(spServerMessage);
-          return;
-        }
-        if(data.user_name) { 
-          const cleanName = (data.user_name.trim() === 'Cliente' || data.user_name.toLowerCase().includes('cliente pro')) ? 'Olá, seja bem vindo!' : data.user_name;
-          userName = cleanName; 
-          const el = document.getElementById('sp-name'); 
-          if(el) el.textContent = cleanName; 
-        }
-        if(data.expires_at) expiresAt = data.expires_at;
-        if(data.status) licenseStatus = data.status;
+        // Sem validação de licença - extensão funciona livremente
         spApplyFeaturePolicy();
       } catch(e) {
         if (e.message && e.message.includes("Extension context invalidated")) {
           clearInterval(heartbeatInterval);
-          console.warn("[SP] Heartbeat stopped: extension context invalidated");
+        }
+      }
+    }, 30000);
+  }
         }
       }
     }, 60000);
